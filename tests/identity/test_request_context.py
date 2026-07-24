@@ -39,6 +39,10 @@ EXPECTED_FIELDS: list[str] = [
     "scopes",
     "session_id",
     "api_key_id",
+    # 权限 PR-9 IdentityBridge 尾附加字段（Wave 3-N.9 Batch 2 主线 B ·
+    # 冻结契约扩展 pattern 第 11 次复用 · 只增不改 · 前 13 字段永久锁定）
+    "bridge_user_id",
+    "bridge_kind",
 ]
 
 
@@ -52,8 +56,8 @@ def test_request_context_field_names_frozen() -> None:
 
 
 def test_request_context_field_count_is_thirteen() -> None:
-    """字段总数 = 9(Wave 0)+ 4(权限 PR-3 长期字段)= 13"""
-    assert len(dataclasses.fields(RequestContext)) == 13
+    """字段总数 = 9(Wave 0)+ 4(权限 PR-3 长期字段) + 2(权限 PR-9 bridge)= 15"""
+    assert len(dataclasses.fields(RequestContext)) == 15
 
 
 def test_request_context_wave0_first_nine_fields_frozen() -> None:

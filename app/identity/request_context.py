@@ -95,6 +95,22 @@ class RequestContext:
     session_id: Optional[str] = None
     api_key_id: Optional[str] = None
 
+    # 权限 PR-9 IdentityBridge 尾附加字段（Wave 3-N.9 Batch 2 主线 B）
+    # · 全部带默认值 · 只增不改 · Wave 0/权限 PR-3 消费方零破坏。
+    # 语义:middleware 层 `IdentityBridgeMiddleware` 解析 legacy signals →
+    # `BridgeResolution` 之后 · **默认不回填**到 RequestContext (`request.state.
+    # bridge_resolution` 才是权威 · 保证 middleware 零副作用于 ContextVar 已
+    # 装配的下游消费)。字段声明本 PR 仅落骨架 · 供未来 enforce 分支下游路由
+    # 改造 PR 消费(`dataclasses.replace(ctx, bridge_user_id=..., bridge_kind=...)`
+    # 显式回填后再 `RequestContextVar.set` 到 ContextVar)。
+    #
+    # - `bridge_user_id`:来自 `BridgeResolution.user_id`(UUID or None)。
+    # - `bridge_kind`:来自 `BridgeResolution.kind` 字面量;默认 `"anonymous"`
+    #   保证已存在的 `_build_context` / `_fallback_context` 构造无需修改即可
+    #   通过 dataclass 构造。
+    bridge_user_id: Optional[str] = None
+    bridge_kind: str = "anonymous"
+
 
 def derive_principal_kind(ctx: RequestContext) -> PrincipalKind:
     """从 `RequestContext` 派生 `principal_kind`（纯函数 · 无副作用）。

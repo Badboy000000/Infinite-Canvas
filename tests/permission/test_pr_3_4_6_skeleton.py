@@ -128,11 +128,12 @@ class TestPR3RequestContextExtension:
         ]
 
     def test_T315_extended_4_fields_appended_tail(self):
-        """新 4 字段全部尾附加 · 与冻结契约兼容"""
+        """新 4 字段全部尾附加 · 与冻结契约兼容(PR-9 又尾附加 2 个 bridge 字段)"""
         from dataclasses import fields
 
         names = [f.name for f in fields(RequestContext)]
-        assert names[9:] == [
+        # PR-3 4 长期字段位置固定在 index 9-12(冻结契约扩展 pattern 保证只增不改)
+        assert names[9:13] == [
             "principal_kind",
             "scopes",
             "session_id",
