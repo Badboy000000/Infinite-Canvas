@@ -18592,6 +18592,30 @@ app.include_router(
 # 默认关闭 flag：AUTH_ENABLED=false (GM-22 defaults-off pattern 第 9 次复用)。
 app.include_router(create_auth_router())
 
+# --- 权限 PR-5 · 高风险接口保护 (Wave 3-N.9 Batch 2 主线 A) ----------------
+# 1) CSRFMiddleware(双提交 token) · 默认关闭 flag CSRF_ENABLED=false
+#    (GM-22 defaults-off pattern 第 10 次复用) · 挂在栈外层 · 只对写方法生效。
+# 2) attach_permission_guards:对 5 个高风险路由(PUT /api/providers /
+#    DELETE /api/canvases/{id} / PATCH /api/storage-settings /
+#    POST /api/update-from-github / POST /api/update-rollback)插 dep
+#    require_permission(...) · 默认关闭 flag PERMISSION_ENFORCEMENT=off
+#    (GM-22 defaults-off pattern 第 11 次复用) · off 档等价旧行为。
+# 详见 [[40 实施计划/用户团队权限治理实施计划与PR清单]] PR-5、
+# [[50 决策记录/决策 - 认证栈选型]] §3 CSRF 双提交 token。
+from app.api.middleware import CSRFMiddleware  # noqa: E402
+from app.services.permission.require import (  # noqa: E402
+    attach_permission_guards,
+    is_permission_enforcement_enabled,
+)
+
+app.add_middleware(CSRFMiddleware)
+
+if is_permission_enforcement_enabled():
+    _perm_attached_routes = attach_permission_guards(app)
+    logging.getLogger(__name__).info(
+        "权限 PR-5 高风险接口保护已挂载: %d 条路由", len(_perm_attached_routes)
+    )
+
 if __name__ == "__main__":
     # --- 数据模型治理 PR-1：`python main.py migrate [head|<rev>]` CLI ------
     # 保留原 `python main.py` 启动服务的默认路径（sys.argv 无子命令时进入
