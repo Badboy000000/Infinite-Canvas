@@ -18616,6 +18616,28 @@ if is_permission_enforcement_enabled():
         "权限 PR-5 高风险接口保护已挂载: %d 条路由", len(_perm_attached_routes)
     )
 
+# --- 权限 PR-9 · IdentityBridge (Wave 3-N.9 Batch 2 主线 B) ----------------
+# IdentityBridgeMiddleware:legacy x_user_id / owner 影子迁移到 principal.user_id ·
+# 默认关闭 flag IDENTITY_BRIDGE_ENFORCE=off (GM-22 defaults-off pattern 第 12 次复用)。
+# 挂在 CSRFMiddleware **之内**(后 add · Starlette 语义靠内先跑) ·
+# off 档只做影子填充 · request.state.bridge_resolution 挂载 · 不改路由行为。
+# 详见 [[40 实施计划/用户团队权限治理实施计划与PR清单]] PR-9。
+from app.identity.bridge import IdentityBridge  # noqa: E402
+from app.identity.middleware import (  # noqa: E402
+    IdentityBridgeMiddleware,
+    is_identity_bridge_enabled,
+)
+from app.identity.store import JsonIdentityStore  # noqa: E402
+
+if is_identity_bridge_enabled():
+    _identity_bridge = IdentityBridge(
+        store=JsonIdentityStore(base_dir=os.path.join(DATA_DIR, "identity"))
+    )
+    app.add_middleware(IdentityBridgeMiddleware, bridge=_identity_bridge)
+    logging.getLogger(__name__).info(
+        "权限 PR-9 IdentityBridgeMiddleware 已挂载 (mode from IDENTITY_BRIDGE_ENFORCE)"
+    )
+
 if __name__ == "__main__":
     # --- 数据模型治理 PR-1：`python main.py migrate [head|<rev>]` CLI ------
     # 保留原 `python main.py` 启动服务的默认路径（sys.argv 无子命令时进入
