@@ -313,13 +313,20 @@ def test_missing_files_raise(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# SqliteIdentityStore — 占位空壳
+# SqliteIdentityStore — 权限 PR-10 从占位升级为实装(Lead 圆桌 2026-07-25)
+#
+# 占位期(权限 PR-0)的两项断言(`__init__` 抛 NotImplementedError · 方法名齐全)
+# 已被本 PR 的契约等价性锁替换。方法名齐全性由 `test_sqlite_store.py` 契约锁
+# 中的 10 项方法测试覆盖 · `__init__` 语义由 `test_sqlite_store_init_no_longer_raises`
+# 承接(向后不兼容:占位期抛 · 实装期不抛)。
 # ---------------------------------------------------------------------------
 
 
-def test_sqlite_store_init_raises_notimplemented() -> None:
-    with pytest.raises(NotImplementedError):
-        SqliteIdentityStore()
+def test_sqlite_store_init_no_longer_raises() -> None:
+    """PR-10 实装:构造不再抛 NotImplementedError(占位期 → 实装期)。"""
+    # 允许无参构造(session_factory 与 base_dir 都懒解析)
+    store = SqliteIdentityStore()
+    assert store is not None
 
 
 def test_sqlite_store_method_signatures_present() -> None:

@@ -50,6 +50,7 @@ from app.db.base import metadata as target_metadata  # noqa: E402
 import app.task.tables  # noqa: E402,F401
 import app.data_import.tables  # noqa: E402,F401
 import app.services.auth.tables  # noqa: E402,F401
+import app.identity.tables  # noqa: E402,F401
 
 # 读时求值 URL；覆盖 alembic.ini 中的 `${DB_URL}` 占位符
 from app.db.engine import get_database_url  # noqa: E402
