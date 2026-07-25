@@ -1,0 +1,97 @@
+# deploy/production/docker-compose.production.yml
+#
+# 生产部署模板 · Wave 3-N.11 Batch 10 交付
+#
+# 用法:
+#   1. cp deploy/production/.env.template .env
+#   2. 按 docs/runbooks/ 顺序启用各 flag
+#   3. docker compose -f deploy/production/docker-compose.production.yml up -d
+#
+# 硬约束:
+#   - 6 个生产切换 flag 全部 defaults=off · 应用行为等同 pre-governance
+#   - 用户按 runbook 逐步启用 · 每 flag 观察 ≥7 天
+#   - Lead 不代执行 flag 翻转(GM-14 边界)
+
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: infinite-canvas:production
+    container_name: infinite-canvas-app
+    env_file:
+      - ../../.env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../../data:/app/data
+      - ../../static:/app/static
+      - ./logs:/app/logs
+    depends_on:
+      - minio  # 只在 STORAGE_BACKEND!=local 时用 · local 时可忽略
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/config"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # MinIO 服务 · 仅在 STORAGE_BACKEND!=local 或 MINIO_SWITCHOVER_ENABLED=on 时启用
+  # 若 STORAGE_BACKEND=local · 可 docker compose --profile disable-minio up
+  minio:
+    image: minio/minio:RELEASE.2024-01-01T16-36-33Z
+    container_name: infinite-canvas-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    profiles:
+      - minio
+
+  # Redis · 仅在 RATE_LIMIT_BACKEND=redis 时启用
+  redis:
+    image: redis:7-alpine
+    container_name: infinite-canvas-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    profiles:
+      - redis
+
+volumes:
+  minio-data:
+    driver: local
+  redis-data:
+    driver: local
+
+# 使用示例:
+#
+# 骨架期(所有 flag off · 无 minio/redis):
+#   docker compose -f deploy/production/docker-compose.production.yml up -d app
+#
+# 启用 rate-limit + redis 后端:
+#   docker compose -f deploy/production/docker-compose.production.yml --profile redis up -d
+#
+# MinIO switchover shadow phase:
+#   docker compose -f deploy/production/docker-compose.production.yml --profile minio up -d
